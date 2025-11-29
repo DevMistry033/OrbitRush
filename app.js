@@ -5,6 +5,10 @@ const app = express();
 const path = require("path");
 const PORT = process.env.PORT || 8008;
 
+// //Favicon Setup
+const favicon = require("serve-favicon");
+app.use(favicon(path.join(__dirname, "public", "images", "favicon.png")));
+
 // Routes Import
 const userRoute = require("./routes/user");
 const tourRoute = require("./routes/tour");
