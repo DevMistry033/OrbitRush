@@ -8,19 +8,21 @@ const otpStore = {};
 const jwt = require("jsonwebtoken");
 
 // const transporter = nodemailer.createTransport({
-//   service: "gmail",
+//   host: "smtp.gmail.com",
+//   port: 587,
+//   secure: false,
 //   auth: {
 //     user: process.env.GMAIL_ID,
-//     pass: process.env.GMAIL_PASSWORD, // Your Gmail App Password
+//     pass: process.env.GMAIL_PASSWORD,
 //   },
 // });
 const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
+  host: "smtp-relay.brevo.com",
   port: 587,
   secure: false,
   auth: {
-    user: process.env.GMAIL_ID,
-    pass: process.env.GMAIL_PASSWORD,
+    user: process.env.BREVO_SMTP_USER,
+    pass: process.env.BREVO_SMTP_PASS,
   },
 });
 
@@ -51,7 +53,7 @@ router.post("/forgot-password/send", async (req, res) => {
   otpStore[email] = { otp, expires: Date.now() + 5 * 60 * 1000 };
 
   await transporter.sendMail({
-    from: process.env.GMAIL_ID,
+    from: "Orbit Rush <orbitrushtourism@gmail.com>",
     to: email,
     subject: "Your Password Reset OTP",
     text: `Your OTP is ${otp}. It expires in 5 minutes.`,

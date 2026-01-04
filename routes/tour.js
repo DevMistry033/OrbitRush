@@ -100,11 +100,20 @@ const upload = multer({
 const router = express.Router();
 
 //mail transporter setup
+// const transporter = nodemailer.createTransport({
+//   service: "gmail",
+//   auth: {
+//     user: process.env.GMAIL_ID,
+//     pass: process.env.GMAIL_PASSWORD, // Your Gmail App Password
+//   },
+// });
 const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: "smtp-relay.brevo.com",
+  port: 587,
+  secure: false,
   auth: {
-    user: process.env.GMAIL_ID,
-    pass: process.env.GMAIL_PASSWORD, // Your Gmail App Password
+    user: process.env.BREVO_SMTP_USER,
+    pass: process.env.BREVO_SMTP_PASS,
   },
 });
 
@@ -200,7 +209,7 @@ router.post("/enquire", async (req, res) => {
     try {
       // Send notification to business owner
       await transporter.sendMail({
-        from: process.env.GMAIL_ID,
+        from: "Orbit Rush <orbitrushtourism@gmail.com>",
         to: process.env.GMAIL_ID,
         subject: `🎯 New Tour Enquiry: ${tourName}`,
         html: `
@@ -240,7 +249,7 @@ router.post("/enquire", async (req, res) => {
 
       // Send confirmation to customer
       await transporter.sendMail({
-        from: process.env.GMAIL_ID,
+        from: "Orbit Rush <orbitrushtourism@gmail.com>",
         to: req.user.email,
         subject: `✅ Enquiry Confirmation - ${tourName} | OrbitRush Tourism`,
         html: `
