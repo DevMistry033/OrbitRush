@@ -7,11 +7,20 @@ const crypto = require("crypto");
 const otpStore = {};
 const jwt = require("jsonwebtoken");
 
+// const transporter = nodemailer.createTransport({
+//   service: "gmail",
+//   auth: {
+//     user: process.env.GMAIL_ID,
+//     pass: process.env.GMAIL_PASSWORD, // Your Gmail App Password
+//   },
+// });
 const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: "smtp.gmail.com",
+  port: 587,
+  secure: false,
   auth: {
     user: process.env.GMAIL_ID,
-    pass: process.env.GMAIL_PASSWORD, // Your Gmail App Password
+    pass: process.env.GMAIL_PASSWORD,
   },
 });
 
