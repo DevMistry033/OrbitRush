@@ -103,8 +103,8 @@ const router = express.Router();
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: "orbitrushtourism@gmail.com",
-    pass: "akijwifxnqpfvrhl", // Your Gmail App Password
+    user: process.env.GMAIL_ID,
+    pass: process.env.GMAIL_PASSWORD, // Your Gmail App Password
   },
 });
 
@@ -200,8 +200,8 @@ router.post("/enquire", async (req, res) => {
     try {
       // Send notification to business owner
       await transporter.sendMail({
-        from: "orbitrushtourism@gmail.com",
-        to: "orbitrushtourism@gmail.com",
+        from: process.env.GMAIL_ID,
+        to: process.env.GMAIL_ID,
         subject: `🎯 New Tour Enquiry: ${tourName}`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
@@ -240,7 +240,7 @@ router.post("/enquire", async (req, res) => {
 
       // Send confirmation to customer
       await transporter.sendMail({
-        from: "orbitrushtourism@gmail.com",
+        from: process.env.GMAIL_ID,
         to: req.user.email,
         subject: `✅ Enquiry Confirmation - ${tourName} | OrbitRush Tourism`,
         html: `

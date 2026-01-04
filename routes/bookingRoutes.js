@@ -20,12 +20,12 @@ const razorpay = new Razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 
-// ✅ Mail transporter setup (ADD THIS)
+// ✅ Mail transporter setup
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: "orbitrushtourism@gmail.com",
-    pass: "akijwifxnqpfvrhl", // Your Gmail App Password
+    user: process.env.GMAIL_ID,
+    pass: process.env.GMAIL_PASSWORD, // Your Gmail App Password
   },
 });
 
@@ -198,8 +198,8 @@ router.post("/verify-payment", async (req, res) => {
 
       // 1️⃣ Send notification to business owner
       await transporter.sendMail({
-        from: "orbitrushtourism@gmail.com",
-        to: "orbitrushtourism@gmail.com",
+        from: process.env.GMAIL_ID,
+        to: process.env.GMAIL_ID,
         subject: `💰 New Booking Confirmed: ${tourName} - ₹${amountInRupees}`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 650px; margin: 0 auto; padding: 20px; background: #f9fafb; border-radius: 12px;">
@@ -288,7 +288,7 @@ router.post("/verify-payment", async (req, res) => {
 
       // 2️⃣ Send confirmation email to customer
       await transporter.sendMail({
-        from: "orbitrushtourism@gmail.com",
+        from: process.env.GMAIL_ID,
         to: req.user.email,
         subject: `🎉 Booking Confirmed: ${tourName} | OrbitRush Tourism`,
         html: `

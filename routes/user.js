@@ -10,8 +10,8 @@ const jwt = require("jsonwebtoken");
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: "orbitrushtourism@gmail.com",
-    pass: "akijwifxnqpfvrhl",
+    user: process.env.GMAIL_ID,
+    pass: process.env.GMAIL_PASSWORD, // Your Gmail App Password
   },
 });
 
@@ -42,7 +42,7 @@ router.post("/forgot-password/send", async (req, res) => {
   otpStore[email] = { otp, expires: Date.now() + 5 * 60 * 1000 };
 
   await transporter.sendMail({
-    from: "orbitrushtourism@gmail.com",
+    from: process.env.GMAIL_ID,
     to: email,
     subject: "Your Password Reset OTP",
     text: `Your OTP is ${otp}. It expires in 5 minutes.`,
