@@ -18,7 +18,7 @@ const bookingRoutes = require("./routes/bookingRoutes");
 //Database Connection
 const mongoose = require("mongoose");
 mongoose
-  .connect(process.env.MONGO_URL)
+  .connect(process.env.MONGO_URI)
   .then(() => console.log("MongoDB Connected"))
   .catch((err) => console.error("MongoDB connection error:", err));
 
