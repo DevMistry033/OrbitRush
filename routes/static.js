@@ -2,20 +2,28 @@ const express = require("express");
 const router = express.Router();
 const Tour = require("../models/tour");
 const Enquiry = require("../models/enquiry");
+const Comment = require("../models/comments");
 
 // Homepage Route
 router.get("/", async (req, res) => {
   try {
     const allTours = await Tour.find({});
+    const comments = await Comment.find({})
+      .populate("createdBy")
+      .populate("tourId")
+      .sort({ createdAt: -1 })
+      .limit(6);
     return res.render("homepage", {
       user: req.user,
       tours: allTours,
+      comments,
     });
   } catch (error) {
     console.error("Error loading homepage:", error);
     return res.render("homepage", {
       user: req.user,
       tours: [],
+      comments: [],
     });
   }
 });
