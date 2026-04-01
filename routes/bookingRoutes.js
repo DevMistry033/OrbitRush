@@ -14,11 +14,18 @@ async function getTours() {
   }
 }
 
-// Initialize Razorpay with your keys
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID,
-  key_secret: process.env.RAZORPAY_KEY_SECRET,
-});
+function isRazorpayConfigured() {
+  return Boolean(
+    process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET
+  );
+}
+
+function getRazorpayClient() {
+  return new Razorpay({
+    key_id: process.env.RAZORPAY_KEY_ID,
+    key_secret: process.env.RAZORPAY_KEY_SECRET,
+  });
+}
 
 // ✅ Mail transporter setup
 // const transporter = nodemailer.createTransport({
@@ -42,7 +49,7 @@ const transporter = nodemailer.createTransport({
 router.get("/book/:tourId", async (req, res) => {
   // Check if user is logged in
   if (!req.user) {
-    return res.redirect("/user/login?message=Please login to book a tour");
+    return res.redirect("/user/signin?message=Please login to book a tour");
   }
 
   try {
@@ -53,10 +60,13 @@ router.get("/book/:tourId", async (req, res) => {
       return res.redirect("/tours?error=Tour not found");
     }
 
+    const tours = await getTours();
+
     // Render booking page with tour and user info
     res.render("booking", {
       user: req.user,
       tour: tour,
+      tours,
       error: null,
       success: null,
     });
@@ -69,7 +79,22 @@ router.get("/book/:tourId", async (req, res) => {
 // Route 2: Create Razorpay Order (POST)
 router.post("/create-order", async (req, res) => {
   try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Please login to continue" });
+    }
+
+    if (!isRazorpayConfigured()) {
+      return res.status(500).json({
+        error: "Razorpay is not configured. Add RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET.",
+      });
+    }
+
     const { tourId, travelDate, numberOfPeople } = req.body;
+    const parsedPeople = Number.parseInt(numberOfPeople, 10);
+
+    if (!tourId || !travelDate || !Number.isInteger(parsedPeople) || parsedPeople < 1) {
+      return res.status(400).json({ error: "Invalid booking details" });
+    }
 
     // Get tour to calculate price
     const tour = await Tour.findById(tourId);
@@ -78,11 +103,11 @@ router.post("/create-order", async (req, res) => {
     }
 
     // Calculate total amount in paise (Razorpay needs paise)
-    const amountInRupees = tour.price * numberOfPeople;
+    const amountInRupees = tour.price * parsedPeople;
     const amountInPaise = amountInRupees * 100;
 
     // Create Razorpay order
-    const order = await razorpay.orders.create({
+    const order = await getRazorpayClient().orders.create({
       amount: amountInPaise,
       currency: "INR",
       receipt: `order_${Date.now()}`,
@@ -90,10 +115,12 @@ router.post("/create-order", async (req, res) => {
 
     // Send order details to frontend
     res.json({
+      success: true,
       orderId: order.id,
       amount: amountInPaise,
       currency: "INR",
       keyId: process.env.RAZORPAY_KEY_ID,
+      key: process.env.RAZORPAY_KEY_ID,
     });
   } catch (error) {
     console.error(error);
@@ -104,6 +131,20 @@ router.post("/create-order", async (req, res) => {
 // Route 3: Verify Payment & Save Booking (POST) - UPDATED WITH EMAILS
 router.post("/verify-payment", async (req, res) => {
   try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        error: "Please login to continue",
+      });
+    }
+
+    if (!isRazorpayConfigured()) {
+      return res.status(500).json({
+        success: false,
+        error: "Razorpay is not configured on the server",
+      });
+    }
+
     const {
       razorpay_payment_id,
       razorpay_order_id,
@@ -115,6 +156,26 @@ router.post("/verify-payment", async (req, res) => {
       amount,
       travelers,
     } = req.body;
+    const parsedPeople = Number.parseInt(numberOfPeople, 10);
+    const parsedAmount = Number(amount);
+
+    if (
+      !razorpay_payment_id ||
+      !razorpay_order_id ||
+      !razorpay_signature ||
+      !tourId ||
+      !tourName ||
+      !travelDate ||
+      !Number.isInteger(parsedPeople) ||
+      parsedPeople < 1 ||
+      !Number.isFinite(parsedAmount) ||
+      parsedAmount <= 0
+    ) {
+      return res.status(400).json({
+        success: false,
+        error: "Incomplete payment details",
+      });
+    }
 
     // Verify payment signature (security check)
     const crypto = require("crypto");
@@ -132,7 +193,7 @@ router.post("/verify-payment", async (req, res) => {
     }
 
     // Validate travelers array
-    if (!travelers || travelers.length !== numberOfPeople) {
+    if (!Array.isArray(travelers) || travelers.length !== parsedPeople) {
       return res.status(400).json({
         success: false,
         error: "Traveler details are incomplete",
@@ -165,9 +226,9 @@ router.post("/verify-payment", async (req, res) => {
       tourId: tourId,
       tourName: tourName,
       travelDate: travelDate,
-      numberOfPeople: numberOfPeople,
+      numberOfPeople: parsedPeople,
       travelers: travelers,
-      amount: amount / 100, // Convert back to rupees
+      amount: parsedAmount / 100, // Convert back to rupees
       paymentId: razorpay_payment_id,
       orderId: razorpay_order_id,
       paymentStatus: "completed",
@@ -180,7 +241,7 @@ router.post("/verify-payment", async (req, res) => {
     // 📧 SEND EMAIL NOTIFICATIONS - NEW SECTION
     // ============================================
     try {
-      const amountInRupees = (amount / 100).toLocaleString("en-IN");
+      const amountInRupees = (parsedAmount / 100).toLocaleString("en-IN");
       const formattedDate = new Date(travelDate).toLocaleDateString("en-IN", {
         weekday: "long",
         year: "numeric",
@@ -240,7 +301,7 @@ router.post("/verify-payment", async (req, res) => {
                 </tr>
                 <tr>
                   <td style="padding: 10px 0; color: #6b7280;">Number of People:</td>
-                  <td style="padding: 10px 0; color: #1f2937; font-weight: 600;">${numberOfPeople} Person(s)</td>
+                  <td style="padding: 10px 0; color: #1f2937; font-weight: 600;">${parsedPeople} Person(s)</td>
                 </tr>
               </table>
             </div>
@@ -336,7 +397,7 @@ router.post("/verify-payment", async (req, res) => {
                 </tr>
                 <tr>
                   <td style="padding: 12px 0; color: #6b7280; border-bottom: 1px solid #e5e7eb;">Number of Travelers:</td>
-                  <td style="padding: 12px 0; color: #1f2937; font-weight: 600; border-bottom: 1px solid #e5e7eb;">${numberOfPeople} Person(s)</td>
+                  <td style="padding: 12px 0; color: #1f2937; font-weight: 600; border-bottom: 1px solid #e5e7eb;">${parsedPeople} Person(s)</td>
                 </tr>
                 <tr>
                   <td style="padding: 12px 0; color: #6b7280; border-bottom: 1px solid #e5e7eb;">Total Amount Paid:</td>
@@ -447,7 +508,7 @@ router.post("/verify-payment", async (req, res) => {
 router.get("/my-bookings", async (req, res) => {
   // Check if user is logged in
   if (!req.user) {
-    return res.redirect("/user/login?message=Please login to view bookings");
+    return res.redirect("/user/signin?message=Please login to view bookings");
   }
 
   try {
